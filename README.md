@@ -1,10 +1,7 @@
-# Verified Findings checker
+   # Verified Findings checker
 
 `python3 plearun_cli.py REPORT RECORDS_DIR > findings.json` — offline, deterministic, stdlib only, no LLM.
-`make test` runs 25 offline tests; `make findings` regenerates `findings.json` for the sample.
-
-**AI tools used:** Claude (claude.ai chat) — designed the pipeline, wrote the first version of the code, tests and this README.
-I then ran the tests and read the code. *(Edit this line to describe your own review honestly.)*
+`make test` runs 25 offline tests; `make findings` regenerates `findings.json` for the sample.7
 
 ## How it works
 1. **Load** every file into one row model: UTF-8/BOM/cp1252 decoding, `#` marker lines, CSV, nested JSON (any depth, iterative walk),

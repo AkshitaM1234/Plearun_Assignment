@@ -1,18 +1,3 @@
-#!/usr/bin/env python3
-"""Verified-findings checker.
-
-Usage: python3 plearun_cli.py REPORT RECORDS_DIR > findings.json
-
-Offline and deterministic (no network, no LLM). Pipeline:
-  1. load records into one row model (encoding / format tolerant)
-  2. estimate clock offsets from events seen in >=2 sources (else: do not align)
-  3. extract claims from the report
-  4. decide each claim conservatively from candidate rows
-  5. verify every cite/quote against the raw row text before writing it
-Row numbering: CSV = 1-based data-row index (marker/comment/header/blank lines
-not counted); JSON = 1-based index of event objects in document order;
-VTT = 1-based cue index.
-"""
 import csv, io, json, os, re, sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
@@ -23,11 +8,10 @@ try:
 except OverflowError:
     csv.field_size_limit(10 ** 9)
 
-UNALIGNED_UNC = 600.0   # seconds of clock error we must assume for a device we could not align
-HEDGE_S = 90.0          # extra tolerance for "about / around / roughly"
-SENTINEL_UNC = 5.0      # residual uncertainty of an aligned clock
+UNALIGNED_UNC = 600.0  
+HEDGE_S = 90.0          
+SENTINEL_UNC = 5.0      
 
-# ----------------------------------------------------------------- time parsing
 ISO = re.compile(r'^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?\s*(Z|[+-]\d{2}:?\d{2})?$')
 CLOCK = re.compile(r'^(\d{1,2}):(\d{2})(?::(\d{2}))?$')
 TIME_RX = re.compile(r'(?<![\d:.])([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?(?![\d:])(?:\s*([ap])\.?m\.?)?', re.I)
@@ -51,7 +35,6 @@ def epoch_of(date, h, m, s, off):
 
 
 def parse_ts(v, date, local):
-    """-> (epoch_seconds, resolution_seconds, explicit_tz) or None."""
     if v is None or isinstance(v, bool):
         return None
     if isinstance(v, float) and v.is_integer():
@@ -81,7 +64,6 @@ def parse_ts(v, date, local):
     return None
 
 
-# ------------------------------------------------------------------ text -> semantics
 KIND_RX = [  # (kind, regex, strength)  s = states the event itself, w = only describes it
     ('call', re.compile(r'\b911\b|\bemergency call\b|\bcall (?:received|logged)\b'), 's'),
     ('call', re.compile(r'\bcaller\b|\bcalled in\b'), 'w'),
@@ -136,7 +118,6 @@ def extract_speeds(text):
     return out
 
 
-# ------------------------------------------------------------------------ records
 class Row:
     def __init__(self, **kw):
         self.file = self.src = self.raw = self.text = self.quote = self.device = self.zone = None
@@ -324,15 +305,12 @@ def load_all(rec_dir, report_text):
     return rows, texts, ctx
 
 
-# ---------------------------------------------------------------- clock alignment
 class Align:
     def __init__(self):
         self.off, self.unc = {}, {}
 
 
 def estimate_offsets(rows):
-    """Offsets are estimated ONLY from events of the same kind that appear exactly once in each
-    of two sources, and only trusted when >=2 such anchors agree. Otherwise: do not align."""
     by_kind = defaultdict(lambda: defaultdict(list))
     for r in rows:
         if r.tcol and r.t is not None and not r.is_camera:
@@ -378,7 +356,6 @@ def clock(r, al):
     return r.t, UNALIGNED_UNC
 
 
-# ---------------------------------------------------------------------- claims
 class Claim:
     def __init__(self, text):
         self.text = text
@@ -484,7 +461,6 @@ def extract_claims(report, ctx):
     return claims
 
 
-# --------------------------------------------------------------------- verdicts
 def interval(t, res, hedge):
     return (t - hedge, t + res + hedge)
 
@@ -603,7 +579,6 @@ def decide(c, rows, idx, al):
 
 
 def verify_quote(row, quote, texts):
-    """Rule 1: exact substring of the row's raw text (and present verbatim in the source file)."""
     return bool(quote) and quote in row.raw and quote in texts.get(row.file, '')
 
 
